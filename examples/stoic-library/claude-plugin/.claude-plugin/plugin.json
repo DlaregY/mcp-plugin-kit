@@ -1,0 +1,24 @@
+{
+  "name": "the-stoic-library",
+  "displayName": "The Stoic Library",
+  "version": "1.0.1",
+  "description": "Find Stoic source passages with exact text, named translations, citations and surrounding context.",
+  "author": {
+    "name": "Gerald Norby",
+    "email": "support@norbonics.com",
+    "url": "https://norbonics.com"
+  },
+  "homepage": "https://thestoiclibrary.com/plugin",
+  "license": "MIT",
+  "keywords": [
+    "stoicism",
+    "primary sources",
+    "reference",
+    "philosophy"
+  ],
+  "icon": "./assets/icon.png",
+  "documentationUrl": "https://thestoiclibrary.com/plugin",
+  "supportUrl": "https://norbonics.com/support",
+  "privacyPolicyUrl": "https://thestoiclibrary.com/plugin/privacy",
+  "termsOfServiceUrl": "https://thestoiclibrary.com/plugin/terms"
+}

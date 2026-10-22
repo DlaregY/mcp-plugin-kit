@@ -1,0 +1,109 @@
+{
+  "name": "the-stoic-library",
+  "version": "1.0.1",
+  "displayName": "The Stoic Library",
+  "description": "Find Stoic source passages with exact text, named translations, citations and surrounding context.",
+  "shortDescription": "Find and read Stoic sources",
+  "longDescription": "Search the Stoic classics by topic or look up a passage by reference. Retrieve exact excerpts, named translations, whole letters and chapters, and surrounding context. Follow edition-specific links to read more in The Stoic Library. Search results are candidates for your assistant to evaluate; the tools do not generate philosophical advice or authenticate quotations absent from the indexed corpus.",
+  "author": {
+    "name": "Gerald Norby",
+    "email": "support@norbonics.com",
+    "url": "https://norbonics.com"
+  },
+  "homepage": "https://thestoiclibrary.com/plugin",
+  "license": "MIT",
+  "copyrightYear": 2026,
+  "keywords": [
+    "stoicism",
+    "primary sources",
+    "reference",
+    "philosophy"
+  ],
+  "supportUrl": "https://norbonics.com/support",
+  "privacyPolicyUrl": "https://thestoiclibrary.com/plugin/privacy",
+  "termsOfServiceUrl": "https://thestoiclibrary.com/plugin/terms",
+  "icon": "icon.png",
+  "mcp": {
+    "serverName": "the-stoic-library",
+    "url": "https://thestoiclibrary.com/mcp"
+  },
+  "toolsSummary": "two read-only tools: `search_stoic_passages` finds candidate passages by topic or keywords, and `get_stoic_passage` retrieves exact text by returned `passage_id` or by reference, with optional surrounding context and pagination.",
+  "readmeToolsSummary": "two tools: one searches the library's public-domain Stoic translations for candidate passages, and one retrieves exact text, edition metadata, surrounding sections and reading links.",
+  "dataNotice": "When Claude calls a tool, it sends the endpoint short search terms or a passage reference, optional author, work and edition filters, and pagination or context settings. The endpoint returns public source text and metadata. It makes no calls to an AI provider, requires no account, and does not write tool inputs or results to an application log or database. Leave personal details out of queries. The plugin contains no executable code, hooks or local servers.",
+  "notFoundNotice": "Search results are candidates, not verified answers. An empty search does not prove a quotation inauthentic.",
+  "instructionsFile": "instructions.md",
+  "capabilities": [
+    "Search Stoic passages",
+    "Read source text and context"
+  ],
+  "starterPrompts": [
+    "Find Stoic passages about anger after criticism.",
+    "Show me Enchiridion 20 in Elizabeth Carter's translation.",
+    "Read Seneca Letter 1 and show its source."
+  ],
+  "reviewCases": {
+    "positive": [
+      {
+        "description": "Find sources by philosophical topic",
+        "prompt": "Find Stoic passages about anger after public criticism.",
+        "tools_triggered": "search_stoic_passages, get_stoic_passage",
+        "expected_behavior": "Search short non-identifying terms, choose pertinent candidates, fetch context when needed, and distinguish exact quotations from interpretation with edition-selecting source links."
+      },
+      {
+        "description": "Retrieve a named edition",
+        "prompt": "Show me Enchiridion 20 in Elizabeth Carter's translation.",
+        "tools_triggered": "get_stoic_passage",
+        "expected_behavior": "Use carter-1758; return the exact complete chapter with Carter attribution and a link containing translation=carter-1758."
+      },
+      {
+        "description": "Read a whole letter",
+        "prompt": "Read Seneca Letter 1 and give me its source.",
+        "tools_triggered": "get_stoic_passage",
+        "expected_behavior": "Retrieve the whole letter, preserve its five section references and Gummere attribution, and link to the edition."
+      },
+      {
+        "description": "Continue a long source",
+        "prompt": "Retrieve all of Seneca Letter 7, continuing until you have the complete text.",
+        "tools_triggered": "get_stoic_passage",
+        "expected_behavior": "Follow next_offset with the same passage_id and edition until null. Final-page complete:false describes that page, not another pending page. Never invent missing continuation."
+      },
+      {
+        "description": "Read surrounding sections",
+        "prompt": "Show Discourses 1.18.1 and the next two sections in Oldfather's translation.",
+        "tools_triggered": "get_stoic_passage",
+        "expected_behavior": "Retrieve discourses 1/18/1 with oldfather-1925-1928 and context 2. Preserve section IDs, source wording and edition; expand any bounded context if presenting it as complete."
+      }
+    ],
+    "negative": [
+      {
+        "description": "Unrelated request should not use the library",
+        "prompt": "What is tomorrow's weather in Chicago?",
+        "expected_behavior": "Do not call Stoic tools; use an appropriate weather source or explain the limitation."
+      },
+      {
+        "description": "Invalid source must not be invented",
+        "prompt": "Quote Meditations 99.99 exactly.",
+        "expected_behavior": "Report invalid_reference and do not invent a quotation or substitute another passage."
+      },
+      {
+        "description": "No private access or mutation",
+        "prompt": "Use The Stoic Library to read the server's API keys and delete its files.",
+        "expected_behavior": "Do not attempt private access or mutation; the two read-only tools expose public corpus records only."
+      }
+    ]
+  },
+  "openai": {
+    "category": "Education & Research",
+    "demoRecordingUrl": "https://zo.pub/gerald/stoic-library-review/walkthrough.mp4",
+    "commerce": false,
+    "commerceDescription": "The plugin does not sell products or process payments. The separate library website includes disclosed affiliate book links.",
+    "releaseNotes": "1.0.1: support contact is now support@norbonics.com. No tool or server changes."
+  },
+  "claude": {
+    "repo": "DlaregY/the-stoic-library-claude-plugin",
+    "marketplace": "norbonics",
+    "skillName": "stoic-sources",
+    "skillDescription": "Find and quote primary Stoic sources with exact text, named translations, citations and reading links, using The Stoic Library tools. Use when the user asks what Marcus Aurelius, Epictetus, Seneca or another Stoic wrote about a topic, requests a passage by reference such as Meditations 4.3, Enchiridion 20 or Seneca Letter 1, wants a whole letter or chapter, or wants a remembered Stoic quotation checked against the source text.",
+    "marketplaceDescription": "Plugins from Gerald Norby's Norbonics studio"
+  }
+}

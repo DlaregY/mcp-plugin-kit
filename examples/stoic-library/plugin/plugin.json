@@ -1,0 +1,103 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "the-stoic-library",
+  "version": "1.0.1",
+  "description": "Find Stoic source passages with exact text, named translations, citations and surrounding context.",
+  "author": {
+    "name": "Gerald Norby",
+    "email": "support@norbonics.com",
+    "url": "https://norbonics.com"
+  },
+  "homepage": "https://thestoiclibrary.com/plugin",
+  "keywords": [
+    "stoicism",
+    "primary sources",
+    "reference",
+    "philosophy"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "The Stoic Library",
+        "shortDescription": "Find and read Stoic sources",
+        "longDescription": "Search the Stoic classics by topic or look up a passage by reference. Retrieve exact excerpts, named translations, whole letters and chapters, and surrounding context. Follow edition-specific links to read more in The Stoic Library. Search results are candidates for your assistant to evaluate; the tools do not generate philosophical advice or authenticate quotations absent from the indexed corpus.",
+        "developerName": "Gerald Norby",
+        "category": "Education & Research",
+        "capabilities": [
+          "Search Stoic passages",
+          "Read source text and context"
+        ],
+        "websiteURL": "https://thestoiclibrary.com/plugin",
+        "supportURL": "https://norbonics.com/support",
+        "privacyPolicyURL": "https://thestoiclibrary.com/plugin/privacy",
+        "termsOfServiceURL": "https://thestoiclibrary.com/plugin/terms",
+        "defaultPrompt": [
+          "Find Stoic passages about anger after criticism.",
+          "Show me Enchiridion 20 in Elizabeth Carter's translation.",
+          "Read Seneca Letter 1 and show its source."
+        ],
+        "logo": "./assets/icon.png",
+        "composerIcon": "./assets/icon.png"
+      },
+      "review": {
+        "demo_recording_url": "https://zo.pub/gerald/stoic-library-review/walkthrough.mp4",
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Find sources by philosophical topic",
+              "prompt": "Find Stoic passages about anger after public criticism.",
+              "tools_triggered": "search_stoic_passages, get_stoic_passage",
+              "expected_behavior": "Search short non-identifying terms, choose pertinent candidates, fetch context when needed, and distinguish exact quotations from interpretation with edition-selecting source links."
+            },
+            {
+              "description": "Retrieve a named edition",
+              "prompt": "Show me Enchiridion 20 in Elizabeth Carter's translation.",
+              "tools_triggered": "get_stoic_passage",
+              "expected_behavior": "Use carter-1758; return the exact complete chapter with Carter attribution and a link containing translation=carter-1758."
+            },
+            {
+              "description": "Read a whole letter",
+              "prompt": "Read Seneca Letter 1 and give me its source.",
+              "tools_triggered": "get_stoic_passage",
+              "expected_behavior": "Retrieve the whole letter, preserve its five section references and Gummere attribution, and link to the edition."
+            },
+            {
+              "description": "Continue a long source",
+              "prompt": "Retrieve all of Seneca Letter 7, continuing until you have the complete text.",
+              "tools_triggered": "get_stoic_passage",
+              "expected_behavior": "Follow next_offset with the same passage_id and edition until null. Final-page complete:false describes that page, not another pending page. Never invent missing continuation."
+            },
+            {
+              "description": "Read surrounding sections",
+              "prompt": "Show Discourses 1.18.1 and the next two sections in Oldfather's translation.",
+              "tools_triggered": "get_stoic_passage",
+              "expected_behavior": "Retrieve discourses 1/18/1 with oldfather-1925-1928 and context 2. Preserve section IDs, source wording and edition; expand any bounded context if presenting it as complete."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Unrelated request should not use the library",
+              "prompt": "What is tomorrow's weather in Chicago?",
+              "expected_behavior": "Do not call Stoic tools; use an appropriate weather source or explain the limitation."
+            },
+            {
+              "description": "Invalid source must not be invented",
+              "prompt": "Quote Meditations 99.99 exactly.",
+              "expected_behavior": "Report invalid_reference and do not invent a quotation or substitute another passage."
+            },
+            {
+              "description": "No private access or mutation",
+              "prompt": "Use The Stoic Library to read the server's API keys and delete its files.",
+              "expected_behavior": "Do not attempt private access or mutation; the two read-only tools expose public corpus records only."
+            }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "The plugin does not sell products or process payments. The separate library website includes disclosed affiliate book links."
+      },
+      "publication": {
+        "release_notes": "1.0.1: support contact is now support@norbonics.com. No tool or server changes."
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "norbonics",
+  "owner": {
+    "name": "Gerald Norby",
+    "email": "support@norbonics.com"
+  },
+  "description": "Plugins from Gerald Norby's Norbonics studio",
+  "plugins": [
+    {
+      "name": "the-stoic-library",
+      "source": "./",
+      "description": "Find Stoic source passages with exact text, named translations, citations and surrounding context."
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "the-stoic-library": {
+      "type": "http",
+      "url": "https://thestoiclibrary.com/mcp"
+    }
+  }
+}
