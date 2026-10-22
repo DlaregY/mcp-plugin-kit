@@ -81,6 +81,7 @@ Start from [`examples/stoic-library/plugin-src/spec.json`](examples/stoic-librar
 | `instructions` / `instructionsFile` | The model-facing rules, copied into the Claude skill. |
 | `reviewCases.positive` / `.negative` | ChatGPT review test cases; also rendered into the skill as expected behavior. |
 | `claude.marketplace` | Marketplace name. It must be unique across every marketplace a user adds, so do not reuse one name for two repos. |
+| `claude.directoryUrl` | Optional HTTPS URL of the published Claude directory listing. The generated README links there instead of giving ZIP upload instructions. Omit it for unlisted plugins. |
 | `license` | `MIT` is generated. Anything else needs `licenseFile`. |
 
 `validate` checks required field types, HTTPS URLs, listing lengths, starter prompt and capability limits, the required demo URL, review-case counts and local input files. It does not certify directory acceptance, test server behavior or contact URLs. Library callers should pass `{ baseDir }` to `validate` to check local files.
@@ -90,6 +91,8 @@ Start from [`examples/stoic-library/plugin-src/spec.json`](examples/stoic-librar
 The Claude directory installs from a public GitHub repo whose root is the `claude-plugin/` folder. Mirror it on each release and tag the spec version; see [`scripts/publish-claude-repo.sh`](scripts/publish-claude-repo.sh).
 
 The script replaces the destination repository's contents, so use a dedicated package repo. It honors `output.claude` and accepts an optional second argument matching the CLI's `--out`. It refuses an existing version tag with different contents and pushes a new commit and tag atomically. Review the generated package and destination before running it.
+
+Set `git config user.name` and `git config user.email` in the source project before publishing, or supply `GIT_AUTHOR_NAME` and `GIT_AUTHOR_EMAIL`. The publisher uses that identity for both author and committer and stops if either value is missing.
 
 ## License
 

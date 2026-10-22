@@ -36,7 +36,7 @@ if git show-ref --verify --quiet "refs/tags/v$version"; then
   exit 0
 fi
 if git diff --cached --quiet; then echo "$repo already matches package ($version)"; else
-  git commit -q -m "Release $version"
+  GIT_AUTHOR_NAME="$author_name" GIT_AUTHOR_EMAIL="$author_email" GIT_COMMITTER_NAME="$author_name" GIT_COMMITTER_EMAIL="$author_email" git commit -q -m "Release $version"
 fi
 git tag "v$version"
 git push --atomic -q origin HEAD "refs/tags/v$version"

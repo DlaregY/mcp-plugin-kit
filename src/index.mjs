@@ -41,11 +41,11 @@ export function validate(spec, { baseDir } = {}) {
       if (typeof v !== "boolean") problems.push(`${path} must be a boolean`);
     } else if (typeof v !== "string" || !v.trim()) problems.push(`${path} must be a nonempty string`);
   }
-  for (const path of ["instructions", "instructionsFile", "licenseFile", "readmeToolsSummary", "openai.demoRecordingUrl", "openai.commerceDescription"]) {
+  for (const path of ["instructions", "instructionsFile", "licenseFile", "readmeToolsSummary", "openai.demoRecordingUrl", "openai.commerceDescription", "claude.directoryUrl"]) {
     const v = get(spec, path);
     if (v !== undefined && (typeof v !== "string" || !v.trim())) problems.push(`${path} must be a nonempty string`);
   }
-  for (const path of ["homepage", "supportUrl", "privacyPolicyUrl", "termsOfServiceUrl", "mcp.url", "openai.demoRecordingUrl"]) {
+  for (const path of ["homepage", "supportUrl", "privacyPolicyUrl", "termsOfServiceUrl", "mcp.url", "openai.demoRecordingUrl", "claude.directoryUrl"]) {
     const v = get(spec, path);
     if (v !== undefined) {
       try { const u = new URL(v); if (u.protocol !== "https:" || !u.hostname || u.username || u.password) throw new Error(); }
@@ -195,7 +195,9 @@ claude plugin marketplace add ${s.claude.repo}
 claude plugin install ${s.name}@${s.claude.marketplace}
 \`\`\`
 
-In Claude chat or Cowork, upload the release ZIP under Customize > Plugins > Upload plugin.
+${s.claude.directoryUrl
+    ? `In Claude chat or Cowork, install from the [Claude directory listing](<${new URL(s.claude.directoryUrl).href.replace(/</g, "%3C").replace(/>/g, "%3E")}>).`
+    : "In Claude chat or Cowork, upload the release ZIP under Customize > Plugins > Upload plugin."}
 
 ## Try it
 

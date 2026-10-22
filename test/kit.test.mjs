@@ -15,6 +15,28 @@ test("the example spec is valid", () => {
   assert.deepEqual(validate(spec), []);
 });
 
+test("directory installation replaces only the Claude README upload instruction", () => {
+  const listed = structuredClone(spec);
+  listed.claude.directoryUrl = "https://claude.ai/directory/example";
+  const original = buildTargets(spec, { baseDir });
+  const updated = buildTargets(listed, { baseDir });
+  assert.match(updated.claude.files["README.md"], /\[Claude directory listing\]\(<https:\/\/claude.ai\/directory\/example>\)/);
+  assert.doesNotMatch(updated.claude.files["README.md"], /upload the release ZIP/);
+  assert.match(updated.claude.files["README.md"], /claude plugin marketplace add/);
+  assert.match(original.claude.files["README.md"], /upload the release ZIP/);
+  assert.deepEqual(updated.openai.files, original.openai.files);
+  for (const name of Object.keys(original.claude.files).filter(name => name !== "README.md")) {
+    assert.deepEqual(updated.claude.files[name], original.claude.files[name], name);
+  }
+});
+
+test("directory URL must be a nonempty credential-free HTTPS URL", () => {
+  for (const directoryUrl of ["", null, 42, "http://example.com", "https://user:password@example.com", "not a url"]) {
+    const candidate = { ...spec, claude: { ...spec.claude, directoryUrl } };
+    assert.ok(validate(candidate).some(problem => problem.startsWith("claude.directoryUrl")), String(directoryUrl));
+  }
+});
+
 test("validate names each missing or malformed field", () => {
   const broken = { ...spec, name: "Bad Name", version: "1.0", mcp: { serverName: "x", url: "http://x" }, dataNotice: "" };
   delete broken.instructionsFile;

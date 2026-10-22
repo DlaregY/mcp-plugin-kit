@@ -150,8 +150,11 @@ test("publisher honors custom output and refuses conflicting tags without changi
   const publish = () => execFileSync("bash", [join(repo, "scripts/publish-claude-repo.sh"), specPath, outDir], {env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]});
   build();
   writeFileSync(join(outDir, "packages/claude/.DS_Store"), "junk");
+  env.GIT_COMMITTER_NAME = "Unrelated bot";
+  env.GIT_COMMITTER_EMAIL = "bot@example.com";
   assert.match(publish(), /Published/);
   const head = git(["--git-dir", remote, "rev-parse", "main"]);
+  assert.equal(git(["--git-dir", remote, "log", "-1", "--format=%an <%ae>|%cn <%ce>", "main"]), "Test <test@example.com>|Test <test@example.com>");
   assert.ok(!git(["--git-dir", remote, "ls-tree", "-r", "--name-only", "main"]).includes(".DS_Store"));
   assert.equal(git(["--git-dir", remote, "rev-parse", `v${s.version}`]), head);
   assert.match(publish(), /already contains/);

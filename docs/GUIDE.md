@@ -148,6 +148,7 @@ The Claude package needs no server changes: it points at the same remote endpoin
 - **Check who can submit.** When we did it, Pro and Max users could submit from their own accounts; on Team and Enterprise plans an Owner submits.
 - **The connector and the plugin bundle are reviewed separately.** For us the MCP server listing was published while the bundle was still waiting for a reviewer. The connector form asked for a self-test of every tool; MCP Inspector output against production served as that evidence. A person has to read the linked guidelines before ticking the acknowledgements.
 - **Without the directory**, users can upload the generated `*-claude.zip` in claude.ai under Customize, Plugins, or load the folder with `claude --plugin-dir`.
+- **With a published listing**, set `claude.directoryUrl` to its HTTPS URL. Generated README installation instructions then link to the listing. Leave it unset before a listing exists; ZIP generation and Claude Code installation instructions are unchanged.
 
 ## 8. Record the walkthrough
 
