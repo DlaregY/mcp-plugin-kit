@@ -1,5 +1,5 @@
-import { lstatSync, realpathSync, readdirSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve, relative, isAbsolute } from "node:path";
+import { lstatSync, realpathSync, readdirSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve, relative, isAbsolute, sep } from "node:path";
 import { writeZip } from "./zip.mjs";
 
 const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
@@ -19,6 +19,28 @@ const REQUIRED = [
 ];
 
 const get = (obj, path) => path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj);
+
+/** True when child is parent or sits below it. Compares paths only; pass physical paths to compare locations. */
+const inside = (parent, child) => {
+  const r = relative(parent, child);
+  return r !== ".." && !r.startsWith(`..${sep}`) && !isAbsolute(r);
+};
+
+const PNG_HEADER = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]);
+
+/** Input files are published, so each must physically live in the spec's directory after symlinks resolve. */
+function inputProblem(key, path, baseDir) {
+  if (isAbsolute(path)) return `${key} must be a path relative to the spec file`;
+  let data;
+  try {
+    const file = realpathSync(resolve(baseDir, path));
+    if (!inside(realpathSync(baseDir), file)) return `${key} must be inside the spec file's directory after resolving symlinks; copy the file there`;
+    if (!statSync(file).isFile()) throw new Error();
+    data = readFileSync(file);
+    if (!data.length) throw new Error();
+  } catch { return `${key} must name a readable, nonempty file`; }
+  if (key === "icon" && !data.subarray(0, PNG_HEADER.length).equals(PNG_HEADER)) return "icon must be a PNG file";
+}
 
 /** Returns a list of problems; an empty list means the spec can be built. */
 export function validate(spec, { baseDir } = {}) {
@@ -61,8 +83,8 @@ export function validate(spec, { baseDir } = {}) {
   if (baseDir !== undefined) {
     for (const key of ["icon", "instructionsFile", "licenseFile"]) {
       if (typeof spec[key] !== "string") continue;
-      try { if (!readFileSync(resolve(baseDir, spec[key])).length) throw new Error(); }
-      catch { problems.push(`${key} must name a readable, nonempty file`); }
+      const problem = inputProblem(key, spec[key], baseDir);
+      if (problem) problems.push(problem);
     }
   }
   if (spec.instructions === undefined && spec.instructionsFile === undefined) {
@@ -262,7 +284,7 @@ function claudeFiles(s, icon, instructions, licenseText) {
 export function buildTargets(spec, { baseDir = ".", outDir = resolve(baseDir, ".."), instructions } = {}) {
   const problems = validate({ ...spec, ...(instructions !== undefined && { instructions }) }, { baseDir });
   if (problems.length) throw new Error(`Invalid plugin spec:\n- ${problems.join("\n- ")}`);
-  const at = (p) => resolve(baseDir, p);
+  const at = (p) => realpathSync(resolve(baseDir, p));
   const text = instructions ?? spec.instructions ?? readFileSync(at(spec.instructionsFile), "utf8").trim();
   const licenseText = spec.license === "MIT"
     ? mitLicense(spec.copyrightHolder ?? spec.author.name, spec.copyrightYear)
@@ -306,7 +328,6 @@ function checkTargets(targets) {
   for (let i = 0; i < dirs.length; i++) {
     if (dirname(dirs[i]) === dirs[i]) throw new Error("Output cannot be a filesystem root");
     for (let j = 0; j < i; j++) {
-      const inside = (a, b) => { const r = relative(a, b); return !r || (!r.startsWith("..") && !isAbsolute(r)); };
       if (inside(dirs[i], dirs[j]) || inside(dirs[j], dirs[i])) throw new Error("Output directories must not overlap");
     }
   }

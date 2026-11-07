@@ -24,6 +24,73 @@ test("malformed input returns diagnostics instead of crashing", () => {
   assert.ok(validate({...spec, icon: "missing.png"}, {baseDir}).some(x => x.includes("readable")));
 });
 
+function project(t) {
+  const root = temporary(t);
+  const src = join(root, "project/plugin-src");
+  cpSync(baseDir, src, {recursive: true});
+  const secret = join(root, "outside.txt");
+  writeFileSync(secret, "SYNTHETIC_MARKER outside the project\n");
+  return {root, src, secret, outDir: join(root, "project")};
+}
+
+test("input files cannot come from outside the spec directory", t => {
+  const {root, src, secret, outDir} = project(t);
+  mkdirSync(join(root, "shared"));
+  writeFileSync(join(root, "shared/rules.md"), "SYNTHETIC_MARKER in a linked folder\n");
+  symlinkSync(secret, join(src, "file-link.txt"));
+  symlinkSync(join(root, "shared"), join(src, "folder-link"));
+  const license = {license: "Apache-2.0"};
+  for (const [change, key, message] of [
+    [{icon: secret}, "icon", /relative/],
+    [{instructionsFile: secret}, "instructionsFile", /relative/],
+    [{...license, licenseFile: secret}, "licenseFile", /relative/],
+    [{icon: "../../outside.txt"}, "icon", /inside the spec/],
+    [{instructionsFile: "../../outside.txt"}, "instructionsFile", /inside the spec/],
+    [{...license, licenseFile: "../../outside.txt"}, "licenseFile", /inside the spec/],
+    [{icon: "file-link.txt"}, "icon", /inside the spec/],
+    [{instructionsFile: "file-link.txt"}, "instructionsFile", /inside the spec/],
+    [{...license, licenseFile: "file-link.txt"}, "licenseFile", /inside the spec/],
+    [{instructionsFile: "folder-link/rules.md"}, "instructionsFile", /inside the spec/],
+  ]) {
+    const candidate = {...spec, ...change};
+    const problem = validate(candidate, {baseDir: src}).find(p => p.startsWith(key));
+    assert.match(problem ?? "", message, JSON.stringify(change));
+    assert.throws(() => buildTargets(candidate, {baseDir: src, outDir}), message);
+  }
+});
+
+test("input files may use subfolders and symlinks that stay inside the spec directory", t => {
+  const {src, outDir} = project(t);
+  mkdirSync(join(src, "assets"));
+  mkdirSync(join(src, "..dots"));
+  cpSync(join(src, "icon.png"), join(src, "assets/logo.png"));
+  writeFileSync(join(src, "..dots/rules.md"), "Local rules");
+  symlinkSync("assets/logo.png", join(src, "linked.png"));
+  const candidate = {...spec, icon: "linked.png", instructionsFile: "..dots/rules.md"};
+  assert.deepEqual(validate(candidate, {baseDir: src}), []);
+  const targets = buildTargets(candidate, {baseDir: src, outDir});
+  write(targets);
+  assert.deepEqual(drift(targets), []);
+  assert.ok(readFileSync(join(targets.openai.dir, "assets/icon.png")).equals(readFileSync(join(src, "icon.png"))));
+  assert.match(targets.claude.files[`skills/${spec.claude.skillName}/SKILL.md`], /Local rules/);
+});
+
+test("input files must be regular nonempty files and the icon must be a PNG", t => {
+  const {src} = project(t);
+  mkdirSync(join(src, "folder"));
+  writeFileSync(join(src, "empty.md"), "");
+  writeFileSync(join(src, "text.png"), "not an image");
+  writeFileSync(join(src, "short.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  symlinkSync(join(src, "missing.png"), join(src, "dangling.png"));
+  for (const icon of ["folder", "empty.md", "dangling.png"]) {
+    assert.ok(validate({...spec, icon}, {baseDir: src}).includes("icon must name a readable, nonempty file"), icon);
+  }
+  for (const icon of ["text.png", "short.png", "instructions.md"]) {
+    assert.ok(validate({...spec, icon}, {baseDir: src}).includes("icon must be a PNG file"), icon);
+  }
+  assert.ok(validate({...spec, instructionsFile: "folder"}, {baseDir: src}).includes("instructionsFile must name a readable, nonempty file"));
+});
+
 test("output traversal and overlap are rejected before writes", t => {
   const outDir = temporary(t);
   for (const path of ["..", ".", "../escape", "/tmp", "a/../b", ".git", "a\\b"]) {

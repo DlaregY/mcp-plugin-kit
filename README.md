@@ -82,9 +82,12 @@ Start from [`examples/stoic-library/plugin-src/spec.json`](examples/stoic-librar
 | `reviewCases.positive` / `.negative` | ChatGPT review test cases; also rendered into the skill as expected behavior. |
 | `claude.marketplace` | Marketplace name. It must be unique across every marketplace a user adds, so do not reuse one name for two repos. |
 | `claude.directoryUrl` | Optional HTTPS URL of the published Claude directory listing. The generated README links there instead of giving ZIP upload instructions. Omit it for unlisted plugins. |
+| `icon` | PNG file, copied into both packages as `assets/icon.png`. |
 | `license` | `MIT` is generated. Anything else needs `licenseFile`. |
 
-`validate` checks required field types, HTTPS URLs, listing lengths, starter prompt and capability limits, the required demo URL, review-case counts and local input files. It does not certify directory acceptance, test server behavior or contact URLs. Library callers should pass `{ baseDir }` to `validate` to check local files.
+`icon`, `instructionsFile` and `licenseFile` are relative paths to regular files inside the directory that holds the spec, usually `plugin-src/`. Their contents are published, so absolute paths are refused, and so is any path that leaves that directory, whether by `..` or through a symlink. A symlink that stays inside the directory is fine. To use a shared file, copy it next to the spec.
+
+`validate` checks required field types, HTTPS URLs, listing lengths, starter prompt and capability limits, the required demo URL, review-case counts and local input files, including that the icon has a PNG header. It does not decode the image, certify directory acceptance, test server behavior or contact URLs. Library callers should pass `{ baseDir }` to `validate` to check local files; `buildTargets` always does.
 
 ## Publishing the Claude package
 
