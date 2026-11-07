@@ -18,6 +18,15 @@ const REQUIRED = [
   "claude.skillName", "claude.skillDescription",
 ];
 
+/** The only nested metadata fields copied into generated manifests. */
+const AUTHOR_FIELDS = ["name", "email", "url"];
+const REVIEW_CASE_FIELDS = {
+  positive: ["description", "prompt", "tools_triggered", "expected_behavior"],
+  negative: ["description", "prompt", "expected_behavior"],
+};
+
+const pick = (obj, fields) => Object.fromEntries(Object.entries(obj).filter(([key]) => fields.includes(key)));
+
 const get = (obj, path) => path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj);
 
 /** True when child is parent or sits below it. Compares paths only; pass physical paths to compare locations. */
@@ -53,6 +62,9 @@ export function validate(spec, { baseDir } = {}) {
   for (const key of Object.keys(spec.mcp ?? {})) {
     if (!["serverName", "url"].includes(key)) problems.push(`mcp.${key} is unsupported; this version supports one unauthenticated read-only server`);
   }
+  for (const key of Object.keys(spec.author ?? {})) {
+    if (!AUTHOR_FIELDS.includes(key)) problems.push(`author.${key} is unsupported; allowed fields are ${AUTHOR_FIELDS.join(", ")}`);
+  }
   for (const path of REQUIRED) {
     const v = get(spec, path);
     if (v === undefined || v === null || v === "") problems.push(`missing ${path}`);
@@ -67,7 +79,7 @@ export function validate(spec, { baseDir } = {}) {
     const v = get(spec, path);
     if (v !== undefined && (typeof v !== "string" || !v.trim())) problems.push(`${path} must be a nonempty string`);
   }
-  for (const path of ["homepage", "supportUrl", "privacyPolicyUrl", "termsOfServiceUrl", "mcp.url", "openai.demoRecordingUrl", "claude.directoryUrl"]) {
+  for (const path of ["author.url", "homepage", "supportUrl", "privacyPolicyUrl", "termsOfServiceUrl", "mcp.url", "openai.demoRecordingUrl", "claude.directoryUrl"]) {
     const v = get(spec, path);
     if (v !== undefined) {
       try { const u = new URL(v); if (u.protocol !== "https:" || !u.hostname || u.username || u.password) throw new Error(); }
@@ -100,9 +112,14 @@ export function validate(spec, { baseDir } = {}) {
   if (spec.version && !/^\d+\.\d+\.\d+$/.test(spec.version)) problems.push("version must be MAJOR.MINOR.PATCH");
   if (spec.mcp?.url && !/^https:\/\//.test(spec.mcp.url)) problems.push("mcp.url must be https");
   for (const [kind, cases] of Object.entries(spec.reviewCases ?? {})) {
+    const fields = Object.hasOwn(REVIEW_CASE_FIELDS, kind) ? REVIEW_CASE_FIELDS[kind] : undefined;
+    if (!fields) { problems.push(`reviewCases.${kind} is unsupported; allowed groups are positive, negative`); continue; }
     if (!Array.isArray(cases)) continue;
     cases.forEach((c, i) => {
       if (!c || typeof c !== "object" || Array.isArray(c)) { problems.push(`reviewCases.${kind}[${i}] must be an object`); return; }
+      for (const k of Object.keys(c)) {
+        if (!fields.includes(k)) problems.push(`reviewCases.${kind}[${i}].${k} is unsupported; allowed fields are ${fields.join(", ")}`);
+      }
       for (const k of ["description", "prompt", "expected_behavior"]) {
         if (typeof c[k] !== "string" || !c[k].trim()) problems.push(`reviewCases.${kind}[${i}] missing ${k}`);
       }
@@ -137,10 +154,11 @@ export function loadSpec(specPath) {
 }
 
 function openaiFiles(s, icon) {
+  const testCases = Object.fromEntries(Object.entries(REVIEW_CASE_FIELDS).map(([kind, fields]) => [kind, s.reviewCases[kind].map((c) => pick(c, fields))]));
   return {
     "plugin.json": json({
       $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-      name: s.name, version: s.version, description: s.description, author: s.author,
+      name: s.name, version: s.version, description: s.description, author: pick(s.author, AUTHOR_FIELDS),
       homepage: s.homepage, keywords: s.keywords,
       extensions: { "com.openai": {
         interface: {
@@ -151,7 +169,7 @@ function openaiFiles(s, icon) {
           logo: "./assets/icon.png", composerIcon: "./assets/icon.png",
         },
         review: {
-          demo_recording_url: s.openai.demoRecordingUrl, test_cases: s.reviewCases,
+          demo_recording_url: s.openai.demoRecordingUrl, test_cases: testCases,
           commerce: s.openai.commerce, commerce_description: s.openai.commerceDescription,
         },
         publication: { release_notes: s.openai.releaseNotes },
@@ -258,7 +276,7 @@ function claudeFiles(s, icon, instructions, licenseText) {
   return {
     ".claude-plugin/plugin.json": json({
       name: s.name, displayName: s.displayName, version: s.version, description: s.description,
-      author: s.author, homepage: s.homepage, license: s.license, keywords: s.keywords,
+      author: pick(s.author, AUTHOR_FIELDS), homepage: s.homepage, license: s.license, keywords: s.keywords,
       icon: "./assets/icon.png", documentationUrl: s.homepage, supportUrl: s.supportUrl,
       privacyPolicyUrl: s.privacyPolicyUrl, termsOfServiceUrl: s.termsOfServiceUrl,
     }),

@@ -76,10 +76,11 @@ Start from [`examples/stoic-library/plugin-src/spec.json`](examples/stoic-librar
 | --- | --- |
 | `toolsSummary` | One sentence naming each tool, completing "The connector provides ...". Goes in the skill and README. |
 | `readmeToolsSummary` | Optional plainer version for the README. |
+| `author` | `name`, `email` and optional HTTPS `url`, published in both manifests. Other keys fail validation so private notes cannot reach a package. |
 | `dataNotice` | What each tool call sends and what the endpoint keeps. Reviewers read this. |
 | `notFoundNotice` | Closing README line on how to read empty results. |
 | `instructions` / `instructionsFile` | The model-facing rules, copied into the Claude skill. |
-| `reviewCases.positive` / `.negative` | ChatGPT review test cases; also rendered into the skill as expected behavior. |
+| `reviewCases.positive` / `.negative` | ChatGPT review test cases; also rendered into the skill as expected behavior. Positive cases take `description`, `prompt`, `tools_triggered` and `expected_behavior`; negative cases take the same fields without `tools_triggered`. Other keys and other groups fail validation. |
 | `claude.marketplace` | Marketplace name. It must be unique across every marketplace a user adds, so do not reuse one name for two repos. |
 | `claude.directoryUrl` | Optional HTTPS URL of the published Claude directory listing. The generated README links there instead of giving ZIP upload instructions. Omit it for unlisted plugins. |
 | `icon` | PNG file, copied into both packages as `assets/icon.png`. |

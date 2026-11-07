@@ -91,6 +91,33 @@ test("input files must be regular nonempty files and the icon must be a PNG", t 
   assert.ok(validate({...spec, instructionsFile: "folder"}, {baseDir: src}).includes("instructionsFile must name a readable, nonempty file"));
 });
 
+test("unknown nested metadata is rejected, and supported metadata is published unchanged", t => {
+  const marker = "SYNTHETIC_MARKER";
+  const withCase = (kind, extra) => ({...spec.reviewCases, [kind]: spec.reviewCases[kind].map((c, i) => i ? c : {...c, ...extra})});
+  for (const [change, expected] of [
+    [{author: {...spec.author, internalNote: marker}}, "author.internalNote is unsupported"],
+    [{author: {...spec.author, url: {internalNote: marker}}}, "author.url must be a valid HTTPS URL"],
+    [{author: {...spec.author, url: "http://example.com"}}, "author.url must be a valid HTTPS URL"],
+    [{reviewCases: withCase("positive", {internalNote: marker})}, "reviewCases.positive[0].internalNote is unsupported"],
+    [{reviewCases: withCase("negative", {tools_triggered: marker})}, "reviewCases.negative[0].tools_triggered is unsupported"],
+    [{reviewCases: {...spec.reviewCases, internal: [{prompt: marker}]}}, "reviewCases.internal is unsupported"],
+    [{reviewCases: {...spec.reviewCases, internal: marker}}, "reviewCases.internal is unsupported"],
+    [{reviewCases: {...spec.reviewCases, constructor: [{prompt: marker}]}}, "reviewCases.constructor is unsupported"],
+  ]) {
+    const candidate = {...spec, ...change};
+    assert.ok(validate(candidate).some(p => p.startsWith(expected)), expected);
+    assert.throws(() => buildTargets(candidate, {baseDir, outDir: temporary(t)}), /Invalid plugin spec/);
+  }
+  const {author} = spec;
+  const {openai, claude} = buildTargets({...spec, author: {name: author.name, email: author.email}}, {baseDir, outDir: temporary(t)});
+  assert.deepEqual(JSON.parse(openai.files["plugin.json"]).author, {name: author.name, email: author.email});
+  assert.deepEqual(JSON.parse(claude.files[".claude-plugin/plugin.json"]).author, {name: author.name, email: author.email});
+  const noted = buildTargets({...spec, internalNote: marker, openai: {...spec.openai, internalNote: marker}, claude: {...spec.claude, internalNote: marker}}, {baseDir, outDir: temporary(t)});
+  for (const {files} of Object.values(noted)) {
+    for (const entry of Object.values(files)) if (typeof entry === "string") assert.ok(!entry.includes(marker));
+  }
+});
+
 test("output traversal and overlap are rejected before writes", t => {
   const outDir = temporary(t);
   for (const path of ["..", ".", "../escape", "/tmp", "a/../b", ".git", "a\\b"]) {
