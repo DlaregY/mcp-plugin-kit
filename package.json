@@ -1,6 +1,6 @@
 {
   "name": "mcp-plugin-kit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Build a ChatGPT plugin and a Claude plugin for one remote MCP server from a single spec.",
   "type": "module",
   "bin": { "mcp-plugin-kit": "bin/mcp-plugin-kit.mjs" },
