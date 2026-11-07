@@ -409,16 +409,27 @@ export function write(targets) {
   }
 }
 
-/** Writes one upload ZIP per host and returns their paths. Refuses a symlinked ZIP folder or archive path. */
-export function zip(targets, spec, outDir) {
+/** Preflights ZIP destinations and returns their paths. Call before write() so a bad destination stops the build before any file changes. */
+export function checkArchives(targets, spec, outDir) {
   noLinks(outDir, outDir);
   const archives = Object.keys(targets).map((host) => join(outDir, `${spec.name}-${spec.version}-${host}.zip`));
   for (const archive of archives) {
+    const file = realDestination(resolve(archive));
+    for (const { dir } of Object.values(targets)) {
+      const real = realDestination(resolve(dir));
+      if (inside(real, file) || inside(file, real)) throw new Error(`ZIP ${archive} overlaps package directory ${dir}; change output.openai, output.claude or the ZIP folder`);
+    }
     try {
       const stat = lstatSync(archive);
       if (!stat.isFile() || stat.nlink > 1) throw new Error(`Unsafe destination: ${archive}`);
     } catch (e) { if (e.code !== "ENOENT") throw e; }
   }
+  return archives;
+}
+
+/** Writes one upload ZIP per host and returns their paths. Refuses a symlinked ZIP folder or archive path, and any overlap with a package directory. */
+export function zip(targets, spec, outDir) {
+  const archives = checkArchives(targets, spec, outDir);
   mkdirSync(outDir, { recursive: true });
   return Object.entries(targets).map(([host, { files }], i) => {
     writeZip(archives[i], Object.entries(files).map(([name, entry]) => ({ name, data: contents(entry) })));

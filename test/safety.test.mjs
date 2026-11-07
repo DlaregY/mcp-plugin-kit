@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, rmSync, cpSync, chmodSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync, symlinkSync, rmSync, cpSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { buildTargets, drift, loadSpec, validate, write, zip } from "../src/index.mjs";
+import { buildTargets, checkArchives, drift, loadSpec, validate, write, zip } from "../src/index.mjs";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..");
 const { spec, baseDir } = loadSpec(join(repo, "examples/stoic-library/plugin-src/spec.json"));
@@ -278,4 +278,54 @@ test("zip refuses a symlinked archive folder", t => {
   const targets = buildTargets(spec, {baseDir, outDir});
   symlinkSync(elsewhere, join(outDir, "output"));
   assert.throws(() => zip(targets, spec, join(outDir, "output")), /Symlink/);
+});
+
+test("zip refuses to overlap a package, across aliases and before creating anything", t => {
+  const root = temporary(t);
+  const actual = join(root, "actual");
+  mkdirSync(actual);
+  symlinkSync(actual, join(root, "alias"));
+  const archive = `${spec.name}-${spec.version}-openai.zip`;
+  for (const [output, zipDir] of [
+    [{openai: "output"}, join(actual, "output")],
+    [{claude: "output"}, join(actual, "output")],
+    [{openai: "pkg"}, join(actual, "pkg/nested/zips")],
+    [{openai: "output"}, join(root, "alias/output")],
+    [{openai: `output/${archive}`}, join(actual, "output")],
+  ]) {
+    const targets = buildTargets({...spec, output}, {baseDir, outDir: actual});
+    assert.throws(() => checkArchives(targets, spec, zipDir), /overlaps package/, JSON.stringify(output));
+    assert.throws(() => zip(targets, spec, zipDir), /overlaps package/, JSON.stringify(output));
+  }
+  assert.deepEqual(readdirSync(actual), []);
+});
+
+function cliProject(t, output) {
+  const work = temporary(t);
+  cpSync(baseDir, join(work, "plugin-src"), {recursive: true});
+  writeFileSync(join(work, "plugin-src/spec.json"), JSON.stringify({...spec, output}));
+  const cli = (...args) => execFileSync("node", [join(repo, "bin/mcp-plugin-kit.mjs"), ...args], {cwd: work, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]});
+  return {work, cli};
+}
+
+test("build --zip stops before writing when ZIPs would land in a package", t => {
+  const {work, cli} = cliProject(t, {openai: "output"});
+  assert.throws(() => cli("build", "--zip"), /overlaps package/);
+  assert.deepEqual(readdirSync(work), ["plugin-src"]);
+  assert.match(cli("build"), /Wrote/);
+  assert.match(cli("check"), /match/);
+});
+
+test("build --zip stops before writing when the ZIP folder is a symlink", t => {
+  const {work, cli} = cliProject(t);
+  symlinkSync(temporary(t), join(work, "output"));
+  assert.throws(() => cli("build", "--zip"), /Symlink/);
+  assert.ok(!existsSync(join(work, "plugin")));
+});
+
+test("a package below the ZIP folder keeps working when nothing collides", t => {
+  const {cli} = cliProject(t, {openai: "output/package"});
+  cli("build", "--zip");
+  cli("build", "--zip");
+  assert.match(cli("check"), /match/);
 });

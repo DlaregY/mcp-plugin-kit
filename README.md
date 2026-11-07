@@ -49,7 +49,7 @@ npx github:DlaregY/mcp-plugin-kit check    # in CI: exit 1 if committed packages
 
 Run from the directory that contains `plugin-src/`, or pass `--spec path/to/spec.json`. Output lands beside `plugin-src/` unless you pass `--out`.
 
-Output subdirectories can be set with `output.openai` and `output.claude`. They must be distinct, non-overlapping relative paths without dot segments. Build preflights inputs and destinations, never deletes directories, and refuses unexpected output files; move those files out deliberately before rebuilding. Files that file managers drop into folders (`.DS_Store`, `Thumbs.db`, `desktop.ini`) are ignored, never zipped and never published. `check` detects missing, changed and unexpected files. Builds are not transactions: an operating-system failure during writing may leave partial output; rerun build and check after correcting the failure. Do not run concurrent writers against the same output directories.
+Output subdirectories can be set with `output.openai` and `output.claude`. They must be distinct, non-overlapping relative paths without dot segments. With `--zip` neither may contain the ZIPs, so `output` itself is refused; a package below `output/` is allowed unless it collides with a ZIP name. Build preflights inputs and destinations, including ZIP destinations, before it writes anything, never deletes directories, and refuses unexpected output files; move those files out deliberately before rebuilding. Files that file managers drop into folders (`.DS_Store`, `Thumbs.db`, `desktop.ini`) are ignored, never zipped and never published. `check` detects missing, changed and unexpected files. Builds are not transactions: an operating-system failure during writing may leave partial output; rerun build and check after correcting the failure. Do not run concurrent writers against the same output directories.
 
 For programmatic use, install from GitHub (the package is not published on npm):
 
@@ -67,6 +67,8 @@ const { spec, baseDir } = loadSpec("plugin-src/spec.json");
 const targets = buildTargets(spec, { baseDir, outDir: ".", instructions });
 if (drift(targets).length) process.exit(1);
 ```
+
+`zip()` refuses a destination that overlaps a package. If you call both `write()` and `zip()`, call `checkArchives(targets, spec, zipDir)` first, as the CLI does, so that refusal comes before any package file changes. `write()`, `drift()` and `zip()` trust the targets they are given: the input rules below apply to what `buildTargets` returns, not to file maps you edit or construct yourself.
 
 ## The spec
 
@@ -89,6 +91,16 @@ Start from [`examples/stoic-library/plugin-src/spec.json`](examples/stoic-librar
 `icon`, `instructionsFile` and `licenseFile` are relative paths to regular files inside the directory that holds the spec, usually `plugin-src/`. Their contents are published, so absolute paths are refused, and so is any path that leaves that directory, whether by `..` or through a symlink. A symlink that stays inside the directory is fine. To use a shared file, copy it next to the spec.
 
 `validate` checks required field types, HTTPS URLs, listing lengths, starter prompt and capability limits, the required demo URL, review-case counts and local input files, including that the icon has a PNG header. It does not decode the image, certify directory acceptance, test server behavior or contact URLs. Library callers should pass `{ baseDir }` to `validate` to check local files; `buildTargets` always does.
+
+### Upgrading from 0.2.0
+
+These changes can make a spec that used to pass fail. Generated output for specs that still pass is unchanged.
+
+- `icon`, `instructionsFile` and `licenseFile` must be relative paths that stay inside the spec's directory after symlinks resolve.
+- `icon` must have a PNG header.
+- `author` accepts only `name`, `email` and `url`, and `author.url` must be HTTPS.
+- `reviewCases` accepts only the `positive` and `negative` groups and the fields listed above.
+- `build --zip` refuses an `output.openai` or `output.claude` that holds the ZIPs, where 0.2.0 wrote the ZIPs into the package and failed on the next build.
 
 ## Publishing the Claude package
 

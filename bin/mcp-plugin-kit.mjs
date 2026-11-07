@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { buildTargets, drift, loadSpec, validate, write, zip } from "../src/index.mjs";
+import { buildTargets, checkArchives, drift, loadSpec, validate, write, zip } from "../src/index.mjs";
 
 const usage = `Usage: mcp-plugin-kit <build|check|validate> [--spec plugin-src/spec.json] [--out DIR] [--zip]
 
@@ -38,9 +38,11 @@ try {
     if (stale.length) { console.error(`Generated plugin files are stale; run mcp-plugin-kit build\n${stale.join("\n")}`); process.exit(1); }
     console.log(`Plugin packages match ${values.spec}`);
   } else {
+    const archiveDir = join(outDir, "output");
+    if (values.zip) checkArchives(targets, spec, archiveDir);
     write(targets);
     console.log(`Wrote ${targets.openai.dir} (ChatGPT) and ${targets.claude.dir} (Claude)`);
-    if (values.zip) for (const z of zip(targets, spec, join(outDir, "output"))) console.log(z);
+    if (values.zip) for (const z of zip(targets, spec, archiveDir)) console.log(z);
   }
 } catch (err) {
   console.error(err.message);
